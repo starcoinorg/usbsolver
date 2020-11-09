@@ -27,7 +27,15 @@ impl Message {
             PKT_ENDER
         )
     }
-
+    pub fn reboot_msg() -> Vec<u8> {
+        proto_msg!(
+            PKT_HEADER,
+            [TYPE_REBOOT],
+            [PV],
+            [0x6, 0x0, 0x0, 0x0],
+            PKT_ENDER
+        )
+    }
     pub fn write_job_msg(job_id: u8, target: u32, data: &[u8]) -> Vec<u8> {
         let mut target_b = vec![];
         target_b.write_u32::<LittleEndian>(target).unwrap();

@@ -2,7 +2,7 @@ use crate::constants::*;
 use crate::proto::{DeriveResponse, Message, State};
 use crate::read_until;
 use anyhow::Result;
-use serialport::{SerialPort, SerialPortSettings, SerialPortInfo, SerialPortType};
+use serialport::{SerialPort, SerialPortInfo, SerialPortSettings, SerialPortType};
 use std::io::BufReader;
 use std::io::Write;
 use std::time::Duration;
@@ -20,7 +20,7 @@ impl Default for Config {
         Self {
             target_freq: 600,
             target_voltage: 750,
-            read_timeout: Duration::from_secs(5),
+            read_timeout: Duration::from_secs(1),
             baud_rate: 115200,
         }
     }
@@ -58,7 +58,7 @@ impl UsbDerive {
         }
         Ok(usb_ports)
     }
-    
+
     pub fn open(path: &str, config: Config) -> Result<Self> {
         let mut setting = SerialPortSettings::default();
         setting.baud_rate = config.baud_rate;
@@ -89,16 +89,11 @@ impl UsbDerive {
         }
     }
 
-    pub fn set_hw_params(&mut self) -> Result<State> {
+    pub fn set_hw_params(&mut self) -> Result<()> {
         let msg = Message::set_hw_params_msg(self.config.target_freq, self.config.target_voltage);
         let _ = self.serial_port.write(&msg)?;
-        let resp = self.read()?;
-        match resp {
-            DeriveResponse::State(state) => Ok(state),
-            _ => {
-                return Err(anyhow::anyhow!("Bad set hw params resp:{:?}", resp));
-            }
-        }
+        let _ = self.read();
+        Ok(())
     }
 
     pub fn set_job(&mut self, job_id: u8, target: u32, data: &[u8]) -> Result<()> {
@@ -113,6 +108,12 @@ impl UsbDerive {
         let _ = self.serial_port.write(&msg)?;
         // do not care about it.
         let _ = self.read()?;
+        Ok(())
+    }
+
+    pub fn reboot(&mut self) -> Result<()> {
+        let msg = Message::reboot_msg();
+        let _ = self.serial_port.write(&msg)?;
         Ok(())
     }
 }

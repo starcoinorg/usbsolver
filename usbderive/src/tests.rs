@@ -18,7 +18,6 @@ mod tests {
         let mut derive = UsbDerive::open(path, Config::default()).expect("Must open serial port");
         derive.set_hw_params()?;
         derive.set_opcode()?;
-        derive.get_state()?;
         Ok(derive)
     }
 
@@ -38,12 +37,8 @@ mod tests {
     }
 
     #[test]
-    fn test_setup() {
-        let port = setup("/dev/tty.usbmodem2065325550561").unwrap();
-    }
-
-    #[test]
     fn test_detect() {
-        UsbDerive::detect(1155, 22336);
+        let derive_info = UsbDerive::detect(1155, 22336).unwrap();
+        setup(&derive_info[0].port_name).unwrap();
     }
 }

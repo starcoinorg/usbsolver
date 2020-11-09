@@ -3,6 +3,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures::executor::block_on;
 use futures::SinkExt;
+use starcoin_logger::prelude::*;
 use starcoin_miner_client::{ConsensusStrategy, Solver, U256};
 use std::io::Cursor;
 use std::time::Duration;
@@ -19,6 +20,7 @@ const PID: u16 = 22336;
 #[no_mangle]
 impl UsbSolver {
     pub fn new() -> Result<Self> {
+        let _ = starcoin_logger::init();
         let ports = UsbDerive::detect(VID, PID)?;
         let mut usb_derive: Option<UsbDerive> = None;
         for port in ports {
@@ -33,7 +35,8 @@ impl UsbSolver {
         };
         derive.set_hw_params()?;
         derive.set_opcode()?;
-        derive.get_state()?;
+        info!("usb solver inited");
+
         Ok(Self { derive })
     }
 
@@ -56,27 +59,32 @@ impl Solver for UsbSolver {
         mut stop_rx: UnboundedReceiver<bool>,
     ) {
         let target = UsbSolver::difficulty_to_target_u32(diff);
-        self.derive.set_job(0x1, target, minting_blob).unwrap();
+        if let Err(e) = self.derive.set_job(0x1, target, minting_blob) {
+            error!("Set mint job to derive failed{:?}", e);
+            return;
+        }
         loop {
             if stop_rx.try_next().is_ok() {
                 break;
             }
             match self.derive.read() {
-                Ok(resp) => {
-                    match resp {
-                        DeriveResponse::SolvedJob(seal) => {
-                            block_on(async {
-                                let _ = nonce_tx.send((minting_blob.to_owned(), seal.nonce)).await;
-                            });
-                            break;
-                        }
-                        _ => {
-                            //TODO:process it
-                            continue;
-                        }
+                Ok(resp) => match resp {
+                    DeriveResponse::SolvedJob(seal) => {
+                        block_on(async {
+                            let _ = nonce_tx.send((minting_blob.to_owned(), seal.nonce)).await;
+                        });
+                        break;
                     }
-                }
-                Err(_e) => {
+                    resp => {
+                        warn!("get resp {:?}", resp);
+                        continue;
+                    }
+                },
+                Err(e) => {
+                    info!("No resp received: {:?}, retry", e);
+                    if let Ok(state) = self.derive.get_state() {
+                        info!("derive state:{:?}", state);
+                    }
                     std::thread::sleep(Duration::from_secs(1));
                 }
             }
