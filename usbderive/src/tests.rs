@@ -36,4 +36,14 @@ mod tests {
         let h: [u8; 32] = hash.to_vec().as_slice().try_into().unwrap();
         assert_eq!(expect_hash, h);
     }
+
+    #[test]
+    fn test_setup() {
+        let port = setup("/dev/tty.usbmodem2065325550561").unwrap();
+    }
+
+    #[test]
+    fn test_detect() {
+        UsbDerive::detect(1155, 22336);
+    }
 }

@@ -2,7 +2,7 @@ use crate::constants::*;
 use crate::proto::{DeriveResponse, Message, State};
 use crate::read_until;
 use anyhow::Result;
-use serialport::{SerialPort, SerialPortSettings};
+use serialport::{SerialPort, SerialPortSettings, SerialPortInfo, SerialPortType};
 use std::io::BufReader;
 use std::io::Write;
 use std::time::Duration;
@@ -46,6 +46,19 @@ impl Clone for UsbDerive {
 }
 
 impl UsbDerive {
+    pub fn detect(vid: u16, pid: u16) -> Result<Vec<SerialPortInfo>> {
+        let ports = serialport::available_ports()?;
+        let mut usb_ports = vec![];
+        for port in ports {
+            if let SerialPortType::UsbPort(usb_port) = &port.port_type {
+                if usb_port.vid == vid && usb_port.pid == pid {
+                    usb_ports.push(port);
+                }
+            }
+        }
+        Ok(usb_ports)
+    }
+    
     pub fn open(path: &str, config: Config) -> Result<Self> {
         let mut setting = SerialPortSettings::default();
         setting.baud_rate = config.baud_rate;
@@ -58,7 +71,6 @@ impl UsbDerive {
     }
 
     pub fn read(&mut self) -> Result<DeriveResponse> {
-        //TODO: make it return stream
         let mut raw_resp = vec![];
         let mut port_buf_reader = BufReader::new(&mut self.serial_port);
         read_until(&mut port_buf_reader, &PKT_ENDER, raw_resp.as_mut())?;
@@ -88,6 +100,7 @@ impl UsbDerive {
             }
         }
     }
+
     pub fn set_job(&mut self, job_id: u8, target: u32, data: &[u8]) -> Result<()> {
         let msg = Message::write_job_msg(job_id, target, data);
         let _ = self.serial_port.write(&msg)?;
