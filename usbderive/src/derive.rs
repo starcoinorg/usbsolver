@@ -116,4 +116,11 @@ impl UsbDerive {
         let _ = self.serial_port.write(&msg)?;
         Ok(())
     }
+
+    pub fn can_open(&mut self) -> bool {
+        return match self.get_state() {
+            Ok(state) => state.goodcores == 0,
+            Err(_) => false
+        };
+    }
 }

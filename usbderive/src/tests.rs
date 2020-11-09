@@ -39,6 +39,8 @@ mod tests {
     #[test]
     fn test_detect() {
         let derive_info = UsbDerive::detect(1155, 22336).unwrap();
-        setup(&derive_info[0].port_name).unwrap();
+        let mut derive = setup(&derive_info[0].port_name).unwrap();
+        let state = derive.get_state().unwrap();
+        println!("{:?}", state);
     }
 }

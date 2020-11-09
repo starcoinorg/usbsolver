@@ -24,9 +24,11 @@ impl UsbSolver {
         let ports = UsbDerive::detect(VID, PID)?;
         let mut usb_derive: Option<UsbDerive> = None;
         for port in ports {
-            if let Ok(derive) = UsbDerive::open(&port.port_name, Config::default()) {
-                usb_derive = Some(derive);
-                break;
+            if let Ok(mut derive) = UsbDerive::open(&port.port_name, Config::default()) {
+                if derive.can_open() {
+                    usb_derive = Some(derive);
+                    break;
+                }
             }
         }
         let mut derive = match usb_derive {
