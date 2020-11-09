@@ -62,7 +62,7 @@ impl Solver for UsbSolver {
                         }
                     }
                 }
-                Err(e) => {
+                Err(_e) => {
                     std::thread::sleep(Duration::from_secs(1));
                 }
             }

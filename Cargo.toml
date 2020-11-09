@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 usbderive = { path = "./usbderive" }
-starcoin-miner-client = { path = "../../miner_client" }
+starcoin-miner-client = { git = "https://github.com/fikgol/starcoin", branch = "miner_solver" , package = "starcoin-miner-client"}
 anyhow = "1.0.34"
 futures = "0.3.7"
 byteorder = "1.3.4"
