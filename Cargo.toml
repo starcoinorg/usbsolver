@@ -1,0 +1,17 @@
+[package]
+name = "solver"
+version = "0.1.0"
+authors = ["fikgol <hit.cs.lijun@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+usbderive = { path = "./usbderive" }
+starcoin-miner-client = { path = "../../miner_client" }
+anyhow = "1.0.34"
+futures = "0.3.7"
+byteorder = "1.3.4"
+[lib]
+crate-type = ["dylib"]
+
