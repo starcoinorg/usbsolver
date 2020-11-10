@@ -4,7 +4,8 @@ mod tests {
     use anyhow::Result;
     use starcoin_consensus::Consensus;
     use std::convert::TryInto;
-
+    use async_std::io::BufReader;
+    use smol::Async;
     const INPUT_DATA: [u8; 76] = [
         0x05, 0x05, 0xc0, 0xa7, 0xdb, 0xc7, 0x05, 0xb0, 0xad, 0xf8, 0x2c, 0x58, 0x1a, 0xae, 0xe4,
         0x8b, 0x2e, 0x0a, 0xee, 0x2e, 0xa8, 0x97, 0x2d, 0xd7, 0x9d, 0xba, 0xf3, 0xca, 0x28, 0xac,
@@ -14,10 +15,10 @@ mod tests {
         0x00,
     ];
 
-    fn setup(path: &str) -> Result<UsbDerive> {
+    async fn setup(path: &str) -> Result<UsbDerive> {
         let mut derive = UsbDerive::open(path, Config::default()).expect("Must open serial port");
-        derive.set_hw_params()?;
-        derive.set_opcode()?;
+        derive.set_hw_params().await?;
+        derive.set_opcode().await?;
         Ok(derive)
     }
 
@@ -38,9 +39,13 @@ mod tests {
 
     #[test]
     fn test_detect() {
-        let derive_info = UsbDerive::detect(1155, 22336).unwrap();
-        let mut derive = setup(&derive_info[0].port_name).unwrap();
-        let state = derive.get_state().unwrap();
-        println!("{:?}", state);
+        smol::block_on(async{
+            let derive_info = UsbDerive::detect(1155, 22336).unwrap();
+            let mut derive = setup(&derive_info[0].port_name).await.unwrap();
+            let state = derive.get_state().await.unwrap();
+            derive.set_job(0x1,0x000fffff,&INPUT_DATA).await;
+            let resp  = derive.read().await.unwrap();
+            println!("{:?}", resp);
+        });
     }
 }

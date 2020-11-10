@@ -3,9 +3,9 @@ use crate::proto::{DeriveResponse, Message, State};
 use crate::read_until;
 use anyhow::Result;
 use serialport::{SerialPort, SerialPortInfo, SerialPortSettings, SerialPortType};
-use std::io::BufReader;
-use std::io::Write;
 use std::time::Duration;
+use smol::prelude::*;
+use smol::io::{BufReader, AssertAsync};
 
 #[derive(Clone)]
 pub struct Config {
@@ -20,23 +20,23 @@ impl Default for Config {
         Self {
             target_freq: 600,
             target_voltage: 750,
-            read_timeout: Duration::from_secs(1),
+            read_timeout: Duration::new(0, 0),
             baud_rate: 115200,
         }
     }
 }
 
 pub struct UsbDerive {
-    serial_port: Box<dyn SerialPort>,
+    serial_port: AssertAsync<Box<dyn SerialPort>>,
     config: Config,
 }
 
 impl Clone for UsbDerive {
     fn clone(&self) -> Self {
-        let serial_port = self
-            .serial_port
-            .try_clone()
-            .expect("serial port should be cloned");
+        let inner = self.serial_port
+            .get_ref()
+            .try_clone().expect("serial port should be cloned");
+        let serial_port = AssertAsync::new(inner);
         let config = self.config.clone();
         Self {
             serial_port,
@@ -63,24 +63,24 @@ impl UsbDerive {
         let mut setting = SerialPortSettings::default();
         setting.baud_rate = config.baud_rate;
         setting.timeout = config.read_timeout;
-        let serial_port = serialport::open_with_settings(path, &setting)?;
+        let serial_port = AssertAsync::new(serialport::open_with_settings(path, &setting)?);
         Ok(Self {
             serial_port,
             config,
         })
     }
 
-    pub fn read(&mut self) -> Result<DeriveResponse> {
+    pub async fn read(&mut self) -> Result<DeriveResponse> {
         let mut raw_resp = vec![];
         let mut port_buf_reader = BufReader::new(&mut self.serial_port);
-        read_until(&mut port_buf_reader, &PKT_ENDER, raw_resp.as_mut())?;
+        read_until(&mut port_buf_reader, &PKT_ENDER, raw_resp.as_mut()).await?;
         DeriveResponse::new(raw_resp)
     }
 
-    pub fn get_state(&mut self) -> Result<State> {
+    pub async fn get_state(&mut self) -> Result<State> {
         let msg = Message::get_state_msg();
-        let _ = self.serial_port.write(&msg)?;
-        let resp = self.read()?;
+        let _ = self.serial_port.write(&msg).await?;
+        let resp = self.read().await?;
         match resp {
             DeriveResponse::State(state) => Ok(state),
             _ => {
@@ -89,36 +89,36 @@ impl UsbDerive {
         }
     }
 
-    pub fn set_hw_params(&mut self) -> Result<()> {
+    pub async fn set_hw_params(&mut self) -> Result<()> {
         let msg = Message::set_hw_params_msg(self.config.target_freq, self.config.target_voltage);
-        let _ = self.serial_port.write(&msg)?;
-        let _ = self.read();
+        let _ = self.serial_port.write(&msg).await?;
+        let _ = self.read().await;
         Ok(())
     }
 
-    pub fn set_job(&mut self, job_id: u8, target: u32, data: &[u8]) -> Result<()> {
+    pub async fn set_job(&mut self, job_id: u8, target: u32, data: &[u8]) -> Result<()> {
         let msg = Message::write_job_msg(job_id, target, data);
-        let _ = self.serial_port.write(&msg)?;
-        let _ = self.read();
+        let _ = self.serial_port.write(&msg).await?;
+        let _ = self.read().await;
         Ok(())
     }
 
-    pub fn set_opcode(&mut self) -> Result<()> {
+    pub async fn set_opcode(&mut self) -> Result<()> {
         let msg = Message::opcode_msg();
-        let _ = self.serial_port.write(&msg)?;
+        let _ = self.serial_port.write(&msg).await?;
         // do not care about it.
-        let _ = self.read()?;
+        let _ = self.read().await;
         Ok(())
     }
 
-    pub fn reboot(&mut self) -> Result<()> {
+    pub async fn reboot(&mut self) -> Result<()> {
         let msg = Message::reboot_msg();
-        let _ = self.serial_port.write(&msg)?;
+        let _ = self.serial_port.write(&msg).await?;
         Ok(())
     }
 
-    pub fn can_open(&mut self) -> bool {
-        return match self.get_state() {
+    pub async fn can_open(&mut self) -> bool {
+        return match self.get_state().await {
             Ok(state) => state.goodcores == 0,
             Err(_) => false
         };
