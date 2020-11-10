@@ -6,8 +6,8 @@ use futures::SinkExt;
 use starcoin_logger::prelude::*;
 use starcoin_miner_client::{ConsensusStrategy, Solver, U256};
 use std::io::Cursor;
-use std::time::Duration;
 use usbderive::{Config, DeriveResponse, UsbDerive};
+use std::io;
 
 #[derive(Clone)]
 pub struct UsbSolver {
@@ -25,6 +25,7 @@ impl UsbSolver {
         let mut usb_derive: Option<UsbDerive> = None;
         for port in ports {
             if let Ok(mut derive) = UsbDerive::open(&port.port_name, Config::default()) {
+
                 if derive.can_open() {
                     usb_derive = Some(derive);
                     break;
@@ -37,7 +38,7 @@ impl UsbSolver {
         };
         derive.set_hw_params()?;
         derive.set_opcode()?;
-        info!("usb solver inited");
+        info!("Usb solver inited");
 
         Ok(Self { derive })
     }
@@ -69,6 +70,7 @@ impl Solver for UsbSolver {
             if stop_rx.try_next().is_ok() {
                 break;
             }
+            // Blocking read since the poll has non-zero timeout
             match self.derive.read() {
                 Ok(resp) => match resp {
                     DeriveResponse::SolvedJob(seal) => {
@@ -83,11 +85,13 @@ impl Solver for UsbSolver {
                     }
                 },
                 Err(e) => {
-                    info!("No resp received: {:?}, retry", e);
-                    if let Ok(state) = self.derive.get_state() {
-                        info!("derive state:{:?}", state);
+                    if let Some(err) = e.downcast_ref::<std::io::Error>() {
+                        if err.kind() == io::ErrorKind::TimedOut {
+                            continue;
+                        }
                     }
-                    std::thread::sleep(Duration::from_secs(1));
+                    warn!("Failed to solve: {:?}", e);
+                    break;
                 }
             }
         }

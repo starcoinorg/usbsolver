@@ -80,10 +80,9 @@ impl UsbDerive {
     pub fn get_state(&mut self) -> Result<State> {
         let msg = Message::get_state_msg();
         let _ = self.serial_port.write(&msg)?;
-        let resp = self.read()?;
-        match resp {
+        match self.read()? {
             DeriveResponse::State(state) => Ok(state),
-            _ => {
+            resp => {
                 return Err(anyhow::anyhow!("Bad get state resp:{:?}", resp));
             }
         }
@@ -106,8 +105,7 @@ impl UsbDerive {
     pub fn set_opcode(&mut self) -> Result<()> {
         let msg = Message::opcode_msg();
         let _ = self.serial_port.write(&msg)?;
-        // do not care about it.
-        let _ = self.read()?;
+        let _ = self.read();
         Ok(())
     }
 
@@ -120,7 +118,7 @@ impl UsbDerive {
     pub fn can_open(&mut self) -> bool {
         return match self.get_state() {
             Ok(state) => state.goodcores == 0,
-            Err(_) => false
+            Err(_) => false,
         };
     }
 }
