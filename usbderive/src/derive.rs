@@ -6,6 +6,7 @@ use serialport::{SerialPort, SerialPortInfo, SerialPortSettings, SerialPortType}
 use std::io::BufReader;
 use std::io::Write;
 use std::time::Duration;
+use starcoin_logger::prelude::*;
 
 #[derive(Clone)]
 pub struct Config {
@@ -50,7 +51,9 @@ impl UsbDerive {
         let ports = serialport::available_ports()?;
         let mut usb_ports = vec![];
         for port in ports {
+            info!("detected port with name: {:?}", port.port_name);
             if let SerialPortType::UsbPort(usb_port) = &port.port_type {
+                info!("detected usb port: {:?}, {:?}, {:?}", port.port_name, usb_port.vid, usb_port.pid);
                 if usb_port.vid == vid && usb_port.pid == pid {
                     usb_ports.push(port);
                 }

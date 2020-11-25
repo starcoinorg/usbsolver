@@ -5830,6 +5830,7 @@ dependencies = [
  "parking_lot 0.11.0",
  "serialport",
  "starcoin-consensus",
+ "starcoin-logger",
 ]
 
 [[package]]
