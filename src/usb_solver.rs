@@ -1,4 +1,3 @@
-
 use anyhow::Result;
 use byteorder::{BigEndian, ReadBytesExt};
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -25,9 +24,15 @@ impl UsbSolver {
         let ports = UsbDerive::detect(VID, PID)?;
         let mut usb_derive: Option<UsbDerive> = None;
         for port in ports {
-            if let Ok(derive) = UsbDerive::open(&port.port_name, Config::default()) {
-                usb_derive = Some(derive);
-                break;
+            match UsbDerive::open(&port.port_name, Config::default()) {
+                Ok(derive) => {
+                    usb_derive = Some(derive);
+                    break;
+                }
+                Err(e) => {
+                    warn!("Failed to open port:{:?}", e);
+                    break;
+                }
             }
         }
         let mut derive = match usb_derive {
