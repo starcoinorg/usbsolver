@@ -19,3 +19,15 @@
    plugin_path = ${path_of_the_solver_libary}
    #+END_SRC
 
+** Q&A
+   libstd not find error, set env below:
+
+   Macos:
+   #+BEGIN_SRC 
+   export DYLD_LIBRARY_PATH="$(rustc --print sysroot)/lib:$DYLD_LIBRARY_PATH"
+   #+END_SRC
+
+   Linux:
+   #+BEGIN_SRC 
+   export LD_LIBRARY_PATH="$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH"
+   #+END_SRC
