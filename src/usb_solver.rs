@@ -73,6 +73,9 @@ impl Solver for UsbSolver {
             if stop_rx.try_next().is_ok() {
                 break;
             }
+            if let Ok(info) = self.derive.get_state() {
+                debug!("state: {:?}", info);
+            }
             // Blocking read since the poll has non-zero timeout
             match self.derive.read() {
                 Ok(resp) => match resp {
