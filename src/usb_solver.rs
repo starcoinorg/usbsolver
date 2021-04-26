@@ -31,7 +31,7 @@ impl UsbSolver {
                 }
                 Err(e) => {
                     warn!("Failed to open port:{:?}", e);
-                    break;
+                    continue;
                 }
             }
         }
