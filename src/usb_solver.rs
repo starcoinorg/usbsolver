@@ -8,6 +8,7 @@ use starcoin_miner_client::{ConsensusStrategy, Solver, U256};
 use std::io::Cursor;
 use usbderive::{Config, DeriveResponse, UsbDerive};
 use std::io;
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct UsbSolver {
@@ -17,6 +18,7 @@ pub struct UsbSolver {
 const VID: u16 = 1155;
 const PID: u16 = 22336;
 
+#[allow(unused_attributes)]
 #[no_mangle]
 impl UsbSolver {
     pub fn new() -> Result<Self> {
@@ -69,13 +71,20 @@ impl Solver for UsbSolver {
             error!("Set mint job to derive failed{:?}", e);
             return;
         }
+        let mut derive = self.derive.clone();
+        std::thread::spawn(move ||
+            loop {
+                if let Ok(info) = derive.get_state() {
+                    debug!("state: {:?}", info);
+                }
+                std::thread::sleep(Duration::from_secs(15));
+            }
+        );
         loop {
             if stop_rx.try_next().is_ok() {
                 break;
             }
-            if let Ok(info) = self.derive.get_state() {
-                debug!("state: {:?}", info);
-            }
+
             // Blocking read since the poll has non-zero timeout
             match self.derive.read() {
                 Ok(resp) => match resp {
