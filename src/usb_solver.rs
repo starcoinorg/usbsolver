@@ -3,12 +3,11 @@ use byteorder::{BigEndian, ReadBytesExt};
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures::executor::block_on;
 use futures::SinkExt;
+use rand::Rng;
 use starcoin_logger::prelude::*;
 use starcoin_miner_client::{ConsensusStrategy, Solver, U256};
 use std::io::Cursor;
 use usbderive::{Config, DeriveResponse, UsbDerive};
-use std::io;
-use std::time::Duration;
 
 #[derive(Clone)]
 pub struct UsbSolver {
@@ -67,24 +66,18 @@ impl Solver for UsbSolver {
         mut stop_rx: UnboundedReceiver<bool>,
     ) {
         let target = UsbSolver::difficulty_to_target_u32(diff);
-        if let Err(e) = self.derive.set_job(0x1, target, minting_blob) {
-            error!("Set mint job to derive failed{:?}", e);
+        let mut rng = rand::thread_rng();
+        let job_id: u8 = rng.gen();
+        if let Err(e) = self.derive.set_job(job_id, target, minting_blob) {
+            error!("Set mint job to derive failed: {:?}", e);
             return;
         }
-        let mut derive = self.derive.clone();
-        std::thread::spawn(move ||
-            loop {
-                if let Ok(info) = derive.get_state() {
-                    debug!("state: {:?}", info);
-                }
-                std::thread::sleep(Duration::from_secs(15));
-            }
-        );
+
         loop {
             if stop_rx.try_next().is_ok() {
+                debug!("Stop solver");
                 break;
             }
-
             // Blocking read since the poll has non-zero timeout
             match self.derive.read() {
                 Ok(resp) => match resp {
@@ -100,14 +93,13 @@ impl Solver for UsbSolver {
                     }
                 },
                 Err(e) => {
-                    if let Some(err) = e.downcast_ref::<std::io::Error>() {
-                        if err.kind() == io::ErrorKind::TimedOut {
-                            continue;
-                        }
-                    }
                     debug!("Failed to solve: {:?}", e);
-                    break;
                 }
+            }
+            let _ = self.derive.write_state();
+            if let Err(e) = self.derive.set_job(job_id, target, minting_blob) {
+                error!("Reset mint job to derive failed: {:?}", e);
+                return;
             }
         }
     }

@@ -12,10 +12,10 @@ members = ["usbderive"]
 usbderive = { path = "./usbderive" }
 starcoin-miner-client = { git = "https://github.com/fikgol/starcoin", branch = "miner_solver", package = "starcoin-miner-client" }
 starcoin-logger = { git = "https://github.com/fikgol/starcoin", branch = "miner_solver", package = "starcoin-logger" }
-
 anyhow = "1.0.34"
 futures = "0.3.7"
 byteorder = "1.3.4"
+rand = "0.8.3"
 [lib]
 crate-type = ["dylib"]
 

@@ -3,10 +3,10 @@ use crate::proto::{DeriveResponse, Message, State};
 use crate::read_until;
 use anyhow::Result;
 use serialport::{SerialPort, SerialPortInfo, SerialPortSettings, SerialPortType};
+use starcoin_logger::prelude::*;
 use std::io::BufReader;
 use std::io::Write;
 use std::time::Duration;
-use starcoin_logger::prelude::*;
 
 #[derive(Clone)]
 pub struct Config {
@@ -21,7 +21,7 @@ impl Default for Config {
         Self {
             target_freq: 600,
             target_voltage: 750,
-            read_timeout: Duration::from_secs(1),
+            read_timeout: Duration::from_secs(5),
             baud_rate: 115200,
         }
     }
@@ -53,7 +53,10 @@ impl UsbDerive {
         for port in ports {
             info!("detected port with name: {:?}", port.port_name);
             if let SerialPortType::UsbPort(usb_port) = &port.port_type {
-                info!("detected usb port: {:?}, {:?}, {:?}", port.port_name, usb_port.vid, usb_port.pid);
+                info!(
+                    "detected usb port: {:?}, {:?}, {:?}",
+                    port.port_name, usb_port.vid, usb_port.pid
+                );
                 if usb_port.vid == vid && usb_port.pid == pid {
                     usb_ports.push(port);
                 }
@@ -79,7 +82,6 @@ impl UsbDerive {
         read_until(&mut port_buf_reader, &PKT_ENDER, raw_resp.as_mut())?;
         DeriveResponse::new(raw_resp)
     }
-
     pub fn get_state(&mut self) -> Result<State> {
         let msg = Message::get_state_msg();
         let _ = self.serial_port.write(&msg)?;
@@ -90,7 +92,11 @@ impl UsbDerive {
             }
         }
     }
-
+    pub fn write_state(&mut self) -> Result<()> {
+        let msg = Message::get_state_msg();
+        let _ = self.serial_port.write(&msg)?;
+        Ok(())
+    }
     pub fn set_hw_params(&mut self) -> Result<()> {
         let msg = Message::set_hw_params_msg(self.config.target_freq, self.config.target_voltage);
         let _ = self.serial_port.write(&msg)?;
@@ -101,7 +107,6 @@ impl UsbDerive {
     pub fn set_job(&mut self, job_id: u8, target: u32, data: &[u8]) -> Result<()> {
         let msg = Message::write_job_msg(job_id, target, data);
         let _ = self.serial_port.write(&msg)?;
-        let _ = self.read();
         Ok(())
     }
 
@@ -116,12 +121,5 @@ impl UsbDerive {
         let msg = Message::reboot_msg();
         let _ = self.serial_port.write(&msg)?;
         Ok(())
-    }
-
-    pub fn can_open(&mut self) -> bool {
-        return match self.get_state() {
-            Ok(state) => state.goodcores == 0,
-            Err(_) => false,
-        };
     }
 }
