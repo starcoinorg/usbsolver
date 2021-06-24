@@ -3,11 +3,13 @@ use byteorder::{BigEndian, ReadBytesExt};
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
 use futures::executor::block_on;
 use futures::SinkExt;
-use rand::Rng;
 use starcoin_logger::prelude::*;
-use starcoin_miner_client::{ConsensusStrategy, Solver, U256};
-use std::io::Cursor;
+use starcoin_types::{U256, system_events::{SealEvent, MintBlockEvent}, block::BlockHeaderExtra};
+use std::io::{Cursor, Write};
 use usbderive::{Config, DeriveResponse, UsbDerive};
+use rand::Rng;
+use std::borrow::BorrowMut;
+use starcoin_miner_client_api::Solver;
 
 #[derive(Clone)]
 pub struct UsbSolver {
@@ -17,8 +19,6 @@ pub struct UsbSolver {
 const VID: u16 = 1155;
 const PID: u16 = 22336;
 
-#[allow(unused_attributes)]
-#[no_mangle]
 impl UsbSolver {
     pub fn new() -> Result<Self> {
         let _ = starcoin_logger::init();
@@ -59,16 +59,22 @@ impl UsbSolver {
 impl Solver for UsbSolver {
     fn solve(
         &mut self,
-        _strategy: ConsensusStrategy,
-        minting_blob: &[u8],
-        diff: U256,
-        mut nonce_tx: UnboundedSender<(Vec<u8>, u32)>,
+        event: MintBlockEvent,
+        nonce_tx: UnboundedSender<SealEvent>,
         mut stop_rx: UnboundedReceiver<bool>,
     ) {
-        let target = UsbSolver::difficulty_to_target_u32(diff);
+        let target = UsbSolver::difficulty_to_target_u32(event.difficulty);
         let mut rng = rand::thread_rng();
         let job_id: u8 = rng.gen();
-        if let Err(e) = self.derive.set_job(job_id, target, minting_blob) {
+        let mut nonce_tx = nonce_tx.clone();
+        let mut blob = event.minting_blob.clone();
+        let extra = match &event.extra {
+            None => { BlockHeaderExtra::new([0u8; 4]) }
+            Some(e) => { e.extra }
+        };
+        let _ = blob[35..39].borrow_mut().write_all(extra.as_slice());
+
+        if let Err(e) = self.derive.set_job(job_id, target, &blob) {
             error!("Set mint job to derive failed: {:?}", e);
             return;
         }
@@ -83,12 +89,17 @@ impl Solver for UsbSolver {
                 Ok(resp) => match resp {
                     DeriveResponse::SolvedJob(seal) => {
                         block_on(async {
-                            let _ = nonce_tx.send((minting_blob.to_owned(), seal.nonce)).await;
+                            let _ = nonce_tx.send(SealEvent {
+                                minting_blob: event.minting_blob.clone(),
+                                nonce: seal.nonce,
+                                extra: event.extra,
+                                hash_result: hex::encode(seal.hash),
+                            }).await;
                         });
                         break;
                     }
                     resp => {
-                        debug!("get resp {:?}", resp);
+                        info!("get resp {:?}", resp);
                         continue;
                     }
                 },
@@ -96,8 +107,9 @@ impl Solver for UsbSolver {
                     debug!("Failed to solve: {:?}", e);
                 }
             }
+            info!("job_id:{:?}", job_id);
             let _ = self.derive.write_state();
-            if let Err(e) = self.derive.set_job(job_id, target, minting_blob) {
+            if let Err(e) = self.derive.set_job(job_id, target, &blob) {
                 error!("Reset mint job to derive failed: {:?}", e);
                 return;
             }

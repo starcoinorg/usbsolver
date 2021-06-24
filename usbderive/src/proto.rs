@@ -183,8 +183,7 @@ impl DeriveResponse {
                 if raw_data.len() < 53 {
                     DeriveResponse::Others(raw_data.clone())
                 } else {
-                    let mut hash: [u8; 32] = raw_data[21..53].try_into()?;
-                    hash.reverse();
+                    let hash: [u8; 32] = raw_data[21..53].try_into()?;
                     let job_id = raw_data[9];
                     let nonce = Cursor::new(&raw_data[12..]).read_u32::<LittleEndian>()?;
                     DeriveResponse::SolvedJob(Seal::new(job_id, nonce, hash))

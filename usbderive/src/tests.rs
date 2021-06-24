@@ -30,7 +30,7 @@ mod tests {
         let nonce: u32 = 637;
 
         let hash = starcoin_consensus::CRYPTONIGHT
-            .calculate_pow_hash(&INPUT_DATA, nonce)
+            .calculate_pow_hash(&INPUT_DATA, nonce,&starcoin_types::block::BlockHeaderExtra::default())
             .unwrap();
         let h: [u8; 32] = hash.to_vec().as_slice().try_into().unwrap();
         assert_eq!(expect_hash, h);
