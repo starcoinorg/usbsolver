@@ -3,6 +3,7 @@ mod constants;
 pub mod derive;
 mod proto;
 mod tests;
+
 pub use derive::{Config, UsbDerive};
 pub use proto::DeriveResponse;
 use std::io;

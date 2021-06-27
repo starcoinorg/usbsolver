@@ -21,7 +21,7 @@ impl Default for Config {
         Self {
             target_freq: 600,
             target_voltage: 750,
-            read_timeout: Duration::from_secs(5),
+            read_timeout: Duration::from_secs(1),
             baud_rate: 115200,
         }
     }

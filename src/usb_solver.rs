@@ -7,9 +7,9 @@ use starcoin_logger::prelude::*;
 use starcoin_types::{U256, system_events::{SealEvent, MintBlockEvent}, block::BlockHeaderExtra};
 use std::io::{Cursor, Write};
 use usbderive::{Config, DeriveResponse, UsbDerive};
-use rand::Rng;
 use std::borrow::BorrowMut;
 use starcoin_miner_client_api::Solver;
+use std::time::SystemTime;
 
 #[derive(Clone)]
 pub struct UsbSolver {
@@ -64,8 +64,9 @@ impl Solver for UsbSolver {
         mut stop_rx: UnboundedReceiver<bool>,
     ) {
         let target = UsbSolver::difficulty_to_target_u32(event.difficulty);
-        let mut rng = rand::thread_rng();
-        let job_id: u8 = rng.gen();
+        let job_id = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("System time is before the UNIX_EPOCH").as_millis() % 15 + 1;
         let mut nonce_tx = nonce_tx.clone();
         let mut blob = event.minting_blob.clone();
         let extra = match &event.extra {
@@ -73,8 +74,10 @@ impl Solver for UsbSolver {
             Some(e) => { e.extra }
         };
         let _ = blob[35..39].borrow_mut().write_all(extra.as_slice());
-
-        if let Err(e) = self.derive.set_job(job_id, target, &blob) {
+        if let Err(e) = self.derive.write_state() {
+            error!("get state failed:{}", e);
+        }
+        if let Err(e) = self.derive.set_job(job_id as u8, target, &blob) {
             error!("Set mint job to derive failed: {:?}", e);
             return;
         }
@@ -99,19 +102,13 @@ impl Solver for UsbSolver {
                         break;
                     }
                     resp => {
-                        info!("get resp {:?}", resp);
+                        debug!("get resp {:?}", resp);
                         continue;
                     }
                 },
                 Err(e) => {
                     debug!("Failed to solve: {:?}", e);
                 }
-            }
-            info!("job_id:{:?}", job_id);
-            let _ = self.derive.write_state();
-            if let Err(e) = self.derive.set_job(job_id, target, &blob) {
-                error!("Reset mint job to derive failed: {:?}", e);
-                return;
             }
         }
     }

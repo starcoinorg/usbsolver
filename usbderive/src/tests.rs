@@ -22,21 +22,6 @@ mod tests {
     }
 
     #[test]
-    fn test_check_hash() {
-        let expect_hash: [u8; 32] = [
-            0, 13, 253, 164, 33, 127, 6, 170, 87, 93, 38, 89, 96, 239, 174, 122, 1, 226, 105, 209,
-            163, 81, 205, 222, 250, 36, 170, 84, 24, 158, 242, 162,
-        ];
-        let nonce: u32 = 637;
-
-        let hash = starcoin_consensus::CRYPTONIGHT
-            .calculate_pow_hash(&INPUT_DATA, nonce,&starcoin_types::block::BlockHeaderExtra::default())
-            .unwrap();
-        let h: [u8; 32] = hash.to_vec().as_slice().try_into().unwrap();
-        assert_eq!(expect_hash, h);
-    }
-
-    #[test]
     fn test_detect() {
         let derive_info = UsbDerive::detect(1155, 22336).unwrap();
         let mut derive = setup(&derive_info[0].port_name).unwrap();
