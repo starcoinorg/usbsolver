@@ -10,9 +10,9 @@ members = ["usbderive"]
 
 [dependencies]
 usbderive = { path = "./usbderive" }
-starcoin-miner-client-api = { git = "https://github.com/starcoinorg/starcoin", branch = "stratum_client", package = "starcoin-miner-client-api" }
-starcoin-logger = { git = "https://github.com/starcoinorg/starcoin", branch = "stratum_client", package = "starcoin-logger" }
-starcoin-types = { git = "https://github.com/starcoinorg/starcoin", branch = "stratum_client" , package = "starcoin-types"}
+starcoin-miner-client-api = { git = "https://github.com/starcoinorg/starcoin", branch = "master", package = "starcoin-miner-client-api" }
+starcoin-logger = { git = "https://github.com/starcoinorg/starcoin", branch = "master", package = "starcoin-logger" }
+starcoin-types = { git = "https://github.com/starcoinorg/starcoin", branch = "master" , package = "starcoin-types"}
 anyhow = "1.0.34"
 futures = "0.3.7"
 byteorder = "1.3.4"

@@ -13,9 +13,9 @@ byteorder = "1.3"
 async-std = "1.6.5"
 futures = "0.3.7"
 parking_lot = "0.11.0"
-starcoin-logger = { git = "https://github.com/starcoinorg/starcoin", branch = "stratum_client", package = "starcoin-logger" }
+starcoin-logger = { git = "https://github.com/starcoinorg/starcoin", branch = "master", package = "starcoin-logger" }
 
 [dev-dependencies]
-cryptonight-rs = { git = "https://github.com/starcoinorg/starcoin", branch = "stratum_client" , package = "cryptonight-rs"}
-starcoin-consensus = { git = "https://github.com/starcoinorg/starcoin", branch = "stratum_client" , package = "starcoin-consensus"}
-starcoin-types = { git = "https://github.com/starcoinorg/starcoin", branch = "stratum_client" , package = "starcoin-types"}
+cryptonight-rs = { git = "https://github.com/starcoinorg/starcoin", branch = "master" , package = "cryptonight-rs"}
+starcoin-consensus = { git = "https://github.com/starcoinorg/starcoin", branch = "master" , package = "starcoin-consensus"}
+starcoin-types = { git = "https://github.com/starcoinorg/starcoin", branch = "master" , package = "starcoin-types"}
